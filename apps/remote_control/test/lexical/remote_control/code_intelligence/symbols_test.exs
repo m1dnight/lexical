@@ -220,6 +220,33 @@ defmodule Lexical.RemoteControl.CodeIntelligence.SymbolsTest do
       assert function.name == "defp my_fn"
     end
 
+    test "definintions by macro are found" do
+      {[_macros_module, using_module], doc} =
+        ~q[
+        defmodule Macros do
+          defmacro defbug(name, expr \\ nil) do
+            quote do
+              def(unquote(name), unquote(expr))
+            end
+          end
+        end
+
+        defmodule UsingMacro do
+          require Macros
+          import Macros
+
+          defbug my_fn(x) do
+            x
+          end
+        end
+        ]
+        |> document_symbols()
+
+      assert [function] = using_module.children
+      assert decorate(doc, function.detail_range) =~ " def «my_fn» do"
+      assert function.name == "defp my_fn"
+    end
+
     test "struct definitions are found" do
       {[module], doc} =
         ~q{
